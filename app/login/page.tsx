@@ -9,8 +9,22 @@ import { z } from "zod"
 import { signIn } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -40,94 +54,42 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof loginSchema>) {
     setIsLoading(true)
     setLoginError(null)
-    
+
     try {
-      console.log('Attempting login with email:', values.email);
-      
-      // Check URL for existing error
-      const searchParams = new URLSearchParams(window.location.search)
-      const urlError = searchParams.get("error")
-      
-      if (urlError) {
-        console.log('Found error in URL:', urlError);
-        // Clear the error from the URL
-        const newUrl = window.location.pathname
-        window.history.replaceState({}, document.title, newUrl)
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: values.email,
+        password: values.password,
+      })
+
+      console.log("Authentication result:", result)
+
+      if (!result) {
+        throw new Error("Authentication service unavailable. Please try again later.")
       }
-      
-      // Try to authenticate using credentials provider
-      try {
-        const result = await signIn('credentials', {
-          redirect: false, // Handle redirect manually to provide better error handling
-          email: values.email,
-          password: values.password,
-        })
-        
-        console.log('Authentication result:', result);
-        
-        if (!result) {
-          throw new Error("Authentication service unavailable. Please try again later.");
-        }
-        
-        if (result?.error) {
-          console.log('Authentication error:', result.error);
-          // Handle error messages
-          let errorMessage = "Login failed. Please check your credentials."
-          
-          // Extract more specific error messages
-          if (result.error.includes("No user found")) {
-            errorMessage = "No account found with this email address."
-          } else if (result.error.includes("Invalid password")) {
-            errorMessage = "Invalid password. Please try again."
-          } else if (result.error.includes("MongoDB") || result.error.includes("database")) {
-            errorMessage = "Unable to connect to database. Please try again later."
-          }
-          
-          setLoginError(errorMessage)
-          toast({
-            title: "Login Error",
-            description: errorMessage,
-            variant: "destructive",
-          })
-          return
-        }
-        
-        // Success case
-        console.log('Login successful! Redirecting to dashboard');
+
+      if (result.ok) {
         toast({
           title: "Login successful!",
           description: "Welcome back to ProjectShowcase.",
         })
-        
-        // Redirect to dashboard
         router.push("/dashboard")
-      } catch (error) {
-        console.error("NextAuth signIn error:", error)
-        // Log additional details about the error
-        if (error instanceof Error) {
-          console.error("Error name:", error.name);
-          console.error("Error message:", error.message);
-          console.error("Error stack:", error.stack);
-        }
-        
-        // Handle the error and show a user-friendly message
-        const errorMessage = error instanceof Error ? 
-          error.message : 
-          "Authentication failed. The server might be experiencing issues.";
-          
-        setLoginError(errorMessage);
+      } else {
+        const errorMessage = "Invalid email or password. Please try again."
+        setLoginError(errorMessage)
         toast({
           title: "Login Error",
           description: errorMessage,
           variant: "destructive",
-        });
+        })
       }
     } catch (error) {
-      console.error("Form submission error:", error)
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred. Please try again."
+      console.error("Login error:", error)
+      const errorMessage =
+        error instanceof Error ? error.message : "An unexpected error occurred. Please try again."
       setLoginError(errorMessage)
       toast({
-        title: "Error",
+        title: "Login Error",
         description: errorMessage,
         variant: "destructive",
       })
@@ -141,7 +103,9 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
+          <CardDescription>
+            Enter your credentials to access your account
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -153,7 +117,12 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@example.com" autoComplete="username" {...field} />
+                      <Input
+                        type="email"
+                        placeholder="john@example.com"
+                        autoComplete="username"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -166,13 +135,19 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" autoComplete="current-password" {...field} />
+                      <Input
+                        type="password"
+                        autoComplete="current-password"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {loginError && <div className="text-sm text-destructive">{loginError}</div>}
+              {loginError && (
+                <div className="text-sm text-destructive">{loginError}</div>
+              )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Logging in..." : "Login"}
               </Button>
